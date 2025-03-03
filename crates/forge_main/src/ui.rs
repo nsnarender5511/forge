@@ -19,7 +19,7 @@ lazy_static! {
     pub static ref TRACKER: forge_tracker::Tracker = forge_tracker::Tracker::default();
 }
 
-#[derive(Default)]
+#[derive(Default, Debug)]
 struct UIState {
     current_title: Option<String>,
     conversation_id: Option<ConversationId>,
@@ -62,6 +62,9 @@ impl<F: API> UI<F> {
 
     pub async fn run(&mut self) -> Result<()> {
         // Handle direct prompt if provided
+        println!("------------------------------");
+        println!("state {:?}", self.state);
+        println!("------------------------------");
         let prompt = self.cli.prompt.clone();
         if let Some(prompt) = prompt {
             self.chat(prompt).await?;
@@ -76,7 +79,9 @@ impl<F: API> UI<F> {
             Some(path) => self.console.upload(path).await?,
             None => self.console.prompt(None).await?,
         };
-
+        println!("------------------------------");
+        println!("state {:?}", self.state);
+        println!("------------------------------");
         loop {
             match input {
                 Command::Dump => {
@@ -130,6 +135,9 @@ impl<F: API> UI<F> {
                     input = self.console.prompt(None).await?;
                 }
             }
+            println!("------------------------------");
+            println!("state {:?}", self.state);
+            println!("------------------------------");
         }
 
         Ok(())

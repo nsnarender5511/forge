@@ -39,3 +39,6 @@ Cargo.lock
 .fastembed_cache/
 *.log*
 *.json
+
+# Cursor rules
+.cursor/rules/my-rust-riles.mdc
