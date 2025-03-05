@@ -38,9 +38,10 @@ impl ForgeEnvironmentService {
             .or_else(|_| std::env::var("OPENROUTER_API_KEY"))
             .or_else(|_| std::env::var("OPENAI_API_KEY"))
             .or_else(|_| std::env::var("ANTHROPIC_API_KEY"))
-            .expect("No API key found. Please set one of: FORGE_KEY, OPENROUTER_API_KEY, OPENAI_API_KEY or ANTHROPIC_API_KEY");
+            .or_else(|_| std::env::var("GEMINI_API_KEY"))
+            .expect("No API key found. Please set one of: FORGE_KEY, OPENROUTER_API_KEY, OPENAI_API_KEY, ANTHROPIC_API_KEY or GEMINI_API_KEY");
 
-        println!("provider_key {:?}", provider_key);
+        // println!("provider_key {:?}", provider_key);
         // note: since we know the key is set, we can unwrap here.
         let provider = Provider::from_env().unwrap();
         Environment {

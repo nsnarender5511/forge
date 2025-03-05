@@ -91,6 +91,10 @@ impl ProviderService for OpenRouter {
 
         request = ProviderPipeline::new(&self.provider).transform(request);
 
+        println!("{}", "*".repeat(500));
+        println!("request :: {}", serde_json::to_string_pretty(&request).unwrap());
+        println!("{}", "*".repeat(500));
+
         let url = self.url("chat/completions")?;
         debug!(url = %url, model = %model_id, "Connecting to OpenRouter API");
         let es = self
@@ -203,6 +207,11 @@ impl ProviderService for OpenRouter {
                         .flat_map(|parameter| parameter.iter())
                         .any(|parameter| parameter == "tools"),
                 })
+            }
+            Provider::Gemini => {
+                // For now, assume Gemini supports tools like OpenAI
+                // This can be adjusted later with proper implementation
+                return Ok(Parameters { tool_supported: true });
             }
         }
     }

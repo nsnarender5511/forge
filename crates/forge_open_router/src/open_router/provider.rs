@@ -1,10 +1,12 @@
 use reqwest::Url;
 
 /// A underlying provider for the open router.
-#[derive(Clone, Debug)]
+#[derive(Debug, Clone)]
 pub enum Provider {
-    OpenAI,
     OpenRouter,
+    OpenAI,
+    #[allow(dead_code)]
+    Gemini,
 }
 
 impl Provider {
@@ -20,6 +22,7 @@ impl Provider {
         match self {
             Self::OpenAI => "https://api.openai.com/v1/".parse().unwrap(),
             Self::OpenRouter => "https://openrouter.ai/api/v1/".parse().unwrap(),
+            Self::Gemini => "https://generativelanguage.googleapis.com/v1beta/".parse().unwrap(),
         }
     }
 }
@@ -37,6 +40,10 @@ mod tests {
         assert_eq!(
             Provider::OpenRouter.base_url(),
             "https://openrouter.ai/api/v1/".parse().unwrap()
+        );
+        assert_eq!(
+            Provider::Gemini.base_url(),
+            "https://generativelanguage.googleapis.com/v1beta/".parse().unwrap()
         );
     }
 }

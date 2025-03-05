@@ -1,6 +1,6 @@
 variables:
   models:
-    advanced_model: &advanced_model anthropic/claude-3.7-sonnet
+    advanced_model: &advanced_model google/gemini-2.0-flash-001
     efficiency_model: &efficiency_model anthropic/claude-3.5-haiku
 
 agents:

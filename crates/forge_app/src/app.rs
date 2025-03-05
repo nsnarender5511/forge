@@ -1,4 +1,5 @@
 use std::sync::Arc;
+use std::fmt;
 
 use forge_domain::App;
 
@@ -20,6 +21,19 @@ pub struct ForgeApp<F> {
     provider_service: ForgeProviderService,
     conversation_service: ForgeConversationService,
     prompt_service: ForgeTemplateService<F, ForgeToolService>,
+}
+
+// Manual implementation of Debug for ForgeApp
+impl<F: Infrastructure> fmt::Debug for ForgeApp<F> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("ForgeApp")
+            .field("infra", &"Arc<Infrastructure>")
+            .field("tool_service", &"Arc<ForgeToolService>")
+            .field("provider_service", &"ForgeProviderService")
+            .field("conversation_service", &"ForgeConversationService")
+            .field("prompt_service", &"ForgeTemplateService")
+            .finish()
+    }
 }
 
 impl<F: Infrastructure> ForgeApp<F> {

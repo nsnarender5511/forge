@@ -1,8 +1,10 @@
 mod anthropic;
+mod gemini;
 mod open_router;
 
 use anthropic::Anthropic;
 use forge_domain::{Provider, ProviderService};
+use gemini::Gemini;
 use open_router::{OpenRouter, Provider as OpenRouterProvider};
 
 #[derive(Debug)]
@@ -27,6 +29,8 @@ impl ProviderBuilder {
         let api_key = self
             .api_key
             .ok_or_else(|| anyhow::anyhow!("API key is required for provider: {}", provider))?;
+        // println!("provider :: {:?}", provider);
+        // println!("api_key :: {:?}", api_key);
         Ok(match provider {
             Provider::OpenRouter => Box::new(
                 OpenRouter::builder()
@@ -42,6 +46,12 @@ impl ProviderBuilder {
             ),
             Provider::Anthropic => Box::new(
                 Anthropic::builder()
+                    .api_key(api_key)
+                    .base_url(self.url)
+                    .build()?,
+            ),
+            Provider::Gemini => Box::new(
+                Gemini::builder()
                     .api_key(api_key)
                     .base_url(self.url)
                     .build()?,

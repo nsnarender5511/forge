@@ -39,7 +39,7 @@ impl ForgeAPI<ForgeApp<ForgeInfra>> {
 }
 
 #[async_trait::async_trait]
-impl<F: App + Infrastructure> API for ForgeAPI<F> {
+impl<F: App + Infrastructure + std::fmt::Debug> API for ForgeAPI<F> {
     async fn suggestions(&self) -> Result<Vec<File>> {
         self.suggestion_service.suggestions().await
     }
@@ -56,6 +56,7 @@ impl<F: App + Infrastructure> API for ForgeAPI<F> {
         &self,
         chat: ChatRequest,
     ) -> anyhow::Result<MpscStream<Result<AgentMessage<ChatResponse>, anyhow::Error>>> {
+        // println!("executor_service {:?}", self.executor_service);
         Ok(self.executor_service.chat(chat).await?)
     }
 

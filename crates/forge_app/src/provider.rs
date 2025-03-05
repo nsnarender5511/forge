@@ -23,6 +23,8 @@ impl ForgeProviderService {
             .build()
             .expect("Failed to build provider");
 
+        // println!("##2## provider built");
+
         Self { or, cache: Cache::new(1024) }
     }
 }
@@ -34,6 +36,8 @@ impl ProviderService for ForgeProviderService {
         model_id: &ModelId,
         request: ChatContext,
     ) -> ResultStream<ChatCompletionMessage, anyhow::Error> {
+        println!("##1## going to chat");
+        println!("model_id :: {:?}", model_id);
         self.or
             .chat(model_id, request)
             .await

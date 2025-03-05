@@ -291,12 +291,10 @@ impl<A: App> Orchestrator<A> {
     }
 
     async fn init_agent(&self, agent: &AgentId, event: &Event) -> anyhow::Result<()> {
-        debug!(
-            conversation_id = %self.chat_request.conversation_id,
-            agent = %agent,
-            event = ?event,
-            "Initializing agent"
-        );
+        // println!(
+        //     "conversation_id = {:?}, agent = {:?}, event = {:?}",
+        //     self.chat_request.conversation_id, agent, event
+        // );
         let conversation = self.get_conversation().await?;
         let agent = conversation.workflow.get_agent(agent)?;
 
@@ -309,6 +307,8 @@ impl<A: App> Orchestrator<A> {
             }
         };
 
+        // println!("context :: {:?}", context);
+
         let content = if let Some(user_prompt) = &agent.user_prompt {
             // Use the consolidated render_event method which handles suggestions internally
             self.app
@@ -320,10 +320,15 @@ impl<A: App> Orchestrator<A> {
             event.value.clone()
         };
 
+        //println!("content :: {:?}", content);
+
         context = context.add_message(ContextMessage::user(content));
         self.set_context(&agent.id, context.clone()).await?;
 
+
+
         loop {
+            // println!("executing transforms");
             context = self.execute_transform(&agent.transforms, context).await?;
             self.set_context(&agent.id, context.clone()).await?;
             let response = self
@@ -331,8 +336,11 @@ impl<A: App> Orchestrator<A> {
                 .provider_service()
                 .chat(&agent.model, context.clone())
                 .await?;
+            // println!("Got response stream from provider");
             let ChatCompletionResult { tool_calls, content } =
                 self.collect_messages(&agent.id, response).await?;
+            
+            //println!("chatCompletionResult :: {:?}", content);
 
             let mut tool_results = Vec::new();
 
@@ -376,6 +384,7 @@ impl<A: App> Orchestrator<A> {
 
     pub async fn execute(&self) -> anyhow::Result<()> {
         let event = self.init_dispatch_event().await?;
+        println!("event :: {:?}", event);
         self.dispatch(&event).await
     }
 }
