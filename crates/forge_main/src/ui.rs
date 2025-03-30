@@ -167,6 +167,13 @@ impl<F: API> UI<F> {
                     input = self.console.prompt(prompt_input).await?;
                     continue;
                 }
+                Command::Docs(_) => {
+                    // This should never be reached since we're redirecting /docs to Custom command
+                    // But we need it for exhaustive pattern matching
+                    let prompt_input = Some((&self.state).into());
+                    input = self.console.prompt(prompt_input).await?;
+                    continue;
+                },
                 Command::Message(ref content) => {
                     let chat_result = match self.state.mode {
                         Mode::Help => {
@@ -295,6 +302,34 @@ impl<F: API> UI<F> {
         &mut self,
         stream: &mut (impl StreamExt<Item = Result<AgentMessage<ChatResponse>>> + Unpin),
     ) -> Result<()> {
+        // Check if this is a docs synchronization operation based on conversation state
+        // This is determined by examining the conversation's events to see if any have the "docs" name,
+        // which indicates this conversation is handling a document synchronization operation
+        let mut is_docs_sync = false;
+        
+        if let Some(conversation_id) = &self.state.conversation_id {
+            // First, retrieve the current conversation using its ID
+            match self.api.conversation(conversation_id).await {
+                Ok(Some(conversation)) => {
+                    // Then check if any events in this conversation are "docs" events
+                    // If at least one "docs" event is found, this is a document sync operation
+                    is_docs_sync = conversation.events.iter().any(|e| e.name == "docs");
+                },
+                Ok(None) => {
+                    // Conversation ID exists but conversation was not found
+                    // This is unexpected but we'll handle it gracefully
+                    tracing::warn!("Conversation with ID {} not found", conversation_id);
+                },
+                Err(err) => {
+                    tracing::error!("Error retrieving conversation {}: {}", conversation_id, err);
+                }
+            }
+        }
+            
+        // Progress tracking variables for docs sync operations
+        // These help provide feedback to the user during potentially long-running doc sync processes
+        let mut tool_call_count = 0;
+        
         loop {
             tokio::select! {
                 _ = tokio::signal::ctrl_c() => {
@@ -302,7 +337,26 @@ impl<F: API> UI<F> {
                 }
                 maybe_message = stream.next() => {
                     match maybe_message {
-                        Some(Ok(message)) => self.handle_chat_response(message)?,
+                        Some(Ok(message)) => {
+                            // For docs sync operations, provide additional feedback
+                            if is_docs_sync {
+                                match &message.message {
+                                    ChatResponse::ToolCallStart(_) => {
+                                        tool_call_count += 1;
+                                        if tool_call_count % 5 == 0 {
+                                            // Show occasional progress updates
+                                            CONSOLE.writeln(
+                                                format!("Still analyzing documentation... (processed {} operations)", 
+                                                tool_call_count).dimmed().to_string()
+                                            )?;
+                                        }
+                                    },
+                                    _ => {}
+                                }
+                            }
+                            
+                            self.handle_chat_response(message)?
+                        },
                         Some(Err(err)) => {
                             return Err(err);
                         }
@@ -384,10 +438,10 @@ impl<F: API> UI<F> {
 
     async fn dispatch_event(&mut self, event: Event) -> Result<()> {
         let conversation_id = self.init_conversation().await?;
-        let chat = ChatRequest::new(event, conversation_id);
+        let chat = ChatRequest::new(event.clone(), conversation_id);
         match self.api.chat(chat).await {
             Ok(mut stream) => self.handle_chat_stream(&mut stream).await,
-            Err(err) => Err(err),
+            Err(err) => Err(anyhow::anyhow!("Failed to dispatch event {}: {}", event.name, err)),
         }
     }
 }

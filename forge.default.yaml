@@ -3,6 +3,10 @@ commands:
     description: Analyzes and organizes code changes into meaningful, well-structured commits
   - name: pull-request
     description: Analyzes code changes, generates comprehensive PR descriptions with linked issues.
+  - name: docs
+    description: Automatically synchronize documentation from codebase to website
+    value: |
+      Automatically scan and synchronize documentation from the codebase's @docs folder to the website's supporting files.
 
 variables:
   mode: ACT
@@ -10,7 +14,7 @@ variables:
 # Define model anchors with simpler, purpose-based names
 models:
   # Role-based model definitions - easy to swap implementation
-  - &advanced_model anthropic/claude-3.7-sonnet
+  - &advanced_model anthropic/claude-3.5-sonnet
   - &standard_model anthropic/claude-3.5-haiku
 
 agents:
@@ -169,3 +173,12 @@ agents:
       - tool_forge_process_shell
     subscribe:
       - pull-request
+
+  # Document Syncer Agent: Automates synchronization between codebase docs and Docusaurus website
+  - id: doc-syncer
+    tool_supported: true      # Enables access to file system operations
+    model: *advanced_model    # Uses the more capable model for complex documentation analysis
+    max_walker_depth: 1024    # Allows deeper directory traversal for finding all documentation files
+    system_prompt: "{{> system-prompt-doc-syncer.hbs }}"  # Template defining agent behavior
+    subscribe:
+      - docs                  # Triggered by the /docs command
