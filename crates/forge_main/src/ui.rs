@@ -58,6 +58,18 @@ pub struct UI<F> {
 }
 
 impl<F: API> UI<F> {
+    // Helper method to flush any buffered incomplete line
+    fn flush_line_buffer(&mut self, agent_id: &str) -> Result<()> {
+        if !self.state.line_buffer.is_empty() {
+            let agent_prefix = format!("[{}] ", agent_id.blue().bold());
+            CONSOLE.write(agent_prefix)?;
+            CONSOLE.write(self.state.line_buffer.dimmed().to_string())?;
+            CONSOLE.newline()?;
+            self.state.line_buffer.clear();
+        }
+        Ok(())
+    }
+
     // Set the current mode and update conversation variable
     async fn handle_mode_change(&mut self, mode: Mode) -> Result<()> {
         // Update the mode in state
@@ -431,33 +443,84 @@ impl<F: API> UI<F> {
     }
 
     fn handle_chat_response(&mut self, message: AgentMessage<ChatResponse>) -> Result<()> {
+        // Update the current agent ID in the state
+        self.state.current_agent = Some(message.agent.as_str().to_string());
+        
         match message.message {
-            ChatResponse::Text(text) => CONSOLE.write(text.dimmed().to_string())?,
+            ChatResponse::Text(text) => {
+                // Append new text to any existing buffered text
+                self.state.line_buffer.push_str(&text);
+                
+                // Split the buffer by newlines to identify complete lines
+                let lines: Vec<&str> = self.state.line_buffer.split('\n').collect();
+                
+                // The last line might be incomplete unless the buffer ends with a newline
+                let is_complete_line = self.state.line_buffer.ends_with('\n');
+                
+                // Process all lines except potentially the last one (which may be incomplete)
+                let lines_to_process = if is_complete_line { lines.len() } else { lines.len() - 1 };
+                
+                for i in 0..lines_to_process {
+                    let line = lines[i];
+                    if !line.is_empty() {
+                        // Show the agent name prefix only at the start of each complete line
+                        let agent_prefix = format!("[{}] ", message.agent.as_str().blue().bold());
+                        CONSOLE.write(agent_prefix)?;
+                        CONSOLE.write(line.dimmed().to_string())?;
+                    }
+                    // Always add a newline after a complete line
+                    CONSOLE.newline()?;
+                }
+                
+                // Clear the processed lines from the buffer
+                if is_complete_line {
+                    // If the last line is complete (ends with newline), clear the entire buffer
+                    self.state.line_buffer.clear();
+                } else if lines_to_process > 0 {
+                    // Otherwise keep the incomplete last line in the buffer
+                    self.state.line_buffer = lines[lines_to_process].to_string();
+                }
+            },
             ChatResponse::ToolCallStart(_) => {
+                // Ensure any buffered incomplete line is flushed before tool calls
+                self.flush_line_buffer(message.agent.as_str())?;
+                
                 CONSOLE.newline()?;
                 CONSOLE.newline()?;
             }
             ChatResponse::ToolCallEnd(tool_result) => {
+                // Ensure any buffered incomplete line is flushed before tool results
+                self.flush_line_buffer(message.agent.as_str())?;
+                
                 if !self.cli.verbose {
                     return Ok(());
                 }
 
                 let tool_name = tool_result.name.as_str();
+                
+                // Show which agent is executing the tool
+                let agent_prefix = format!("[{}] ", self.state.current_agent.as_ref().unwrap_or(&"unknown".to_string())).blue().bold();
 
                 CONSOLE.writeln(format!("{}", tool_result.content.dimmed()))?;
 
                 if tool_result.is_error {
-                    CONSOLE.writeln(TitleFormat::failed(tool_name).format())?;
+                    CONSOLE.writeln(format!("{}{}", agent_prefix, TitleFormat::failed(tool_name).format()))?;
                 } else {
-                    CONSOLE.writeln(TitleFormat::success(tool_name).format())?;
+                    CONSOLE.writeln(format!("{}{}", agent_prefix, TitleFormat::success(tool_name).format()))?;
                 }
             }
             ChatResponse::Event(event) => {
+                // Ensure any buffered incomplete line is flushed before events
+                self.flush_line_buffer(message.agent.as_str())?;
+                
                 if event.name == EVENT_TITLE {
                     self.state.current_title = Some(event.value.to_string());
                 }
             }
             ChatResponse::Usage(u) => {
+                // Ensure any buffered incomplete line is flushed before usage info
+                self.flush_line_buffer(message.agent.as_str())?;
+                
                 self.state.usage = u;
             }
         }
