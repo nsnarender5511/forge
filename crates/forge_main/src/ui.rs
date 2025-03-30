@@ -306,6 +306,7 @@ impl<F: API> UI<F> {
         // This is determined by examining the conversation's events to see if any have the "docs" name,
         // which indicates this conversation is handling a document synchronization operation
         let mut is_docs_sync = false;
+        let mut progress_tracking_error = false;
         
         if let Some(conversation_id) = &self.state.conversation_id {
             // First, retrieve the current conversation using its ID
@@ -314,15 +315,42 @@ impl<F: API> UI<F> {
                     // Then check if any events in this conversation are "docs" events
                     // If at least one "docs" event is found, this is a document sync operation
                     is_docs_sync = conversation.events.iter().any(|e| e.name == "docs");
+                    self.state.progress_tracking_error_details = None; // Clear any previous error
                 },
                 Ok(None) => {
                     // Conversation ID exists but conversation was not found
                     // This is unexpected but we'll handle it gracefully
                     tracing::warn!("Conversation with ID {} not found", conversation_id);
+                    progress_tracking_error = true;
+                    self.state.progress_tracking_error_details = Some("conversation not found".to_string());
+                    
+                    // Fallback mechanism - check current message context
+                    if let Some(last_event) = self.state.last_event.as_ref() {
+                        is_docs_sync = last_event.name == "docs";
+                    }
                 },
                 Err(err) => {
+                    let error_msg = format!("{}", err);
                     tracing::error!("Error retrieving conversation {}: {}", conversation_id, err);
+                    progress_tracking_error = true;
+                    self.state.progress_tracking_error_details = Some(error_msg);
+                    
+                    // Fallback mechanism - check current message context
+                    if let Some(last_event) = self.state.last_event.as_ref() {
+                        is_docs_sync = last_event.name == "docs";
+                    }
                 }
+            }
+            
+            // Inform user if progress tracking might be affected
+            if progress_tracking_error && is_docs_sync {
+                let error_message = if let Some(error_details) = &self.state.progress_tracking_error_details {
+                    format!("Note: Progress tracking may be limited: {}", error_details)
+                } else {
+                    "Note: Progress tracking may be limited due to conversation retrieval issues.".to_string()
+                };
+                
+                CONSOLE.writeln(error_message.dimmed().to_string())?;
             }
         }
             
@@ -439,6 +467,8 @@ impl<F: API> UI<F> {
     async fn dispatch_event(&mut self, event: Event) -> Result<()> {
         let conversation_id = self.init_conversation().await?;
         let chat = ChatRequest::new(event.clone(), conversation_id);
+        // Store the event for potential fallback usage
+        self.state.last_event = Some(event.clone());
         match self.api.chat(chat).await {
             Ok(mut stream) => self.handle_chat_stream(&mut stream).await,
             Err(err) => Err(anyhow::anyhow!("Failed to dispatch event {}: {}", event.name, err)),

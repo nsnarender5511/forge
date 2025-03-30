@@ -180,5 +180,10 @@ agents:
     model: *advanced_model    # Uses the more capable model for complex documentation analysis
     max_walker_depth: 1024    # Allows deeper directory traversal for finding all documentation files
     system_prompt: "{{> system-prompt-doc-syncer.hbs }}"  # Template defining agent behavior
+    tools:
+      - tool_forge_filesystem_read
+      - tool_forge_filesystem_write
+      - tool_forge_filesystem_list
+      - tool_forge_process_shell
     subscribe:
       - docs                  # Triggered by the /docs command

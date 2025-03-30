@@ -1,4 +1,4 @@
-use forge_api::{ConversationId, Usage};
+use forge_api::{ConversationId, Event, Usage};
 
 use crate::input::PromptInput;
 
@@ -27,6 +27,8 @@ pub struct UIState {
     pub usage: Usage,
     pub mode: Mode,
     pub is_first: bool,
+    pub last_event: Option<Event>,
+    pub progress_tracking_error_details: Option<String>,
 }
 
 impl Default for UIState {
@@ -37,6 +39,8 @@ impl Default for UIState {
             usage: Default::default(),
             mode: Default::default(),
             is_first: true,
+            last_event: None,
+            progress_tracking_error_details: None,
         }
     }
 }
