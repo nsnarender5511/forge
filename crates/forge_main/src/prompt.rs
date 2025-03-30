@@ -109,7 +109,7 @@ mod tests {
         let usage_style = Style::new()
             .bold()
             .fg(Color::DarkGray)
-            .paint(format!("[ACT/{}/30]", VERSION))
+            .paint(format!("[act/{}/30]", VERSION))
             .to_string();
         let actual = prompt.render_prompt_right();
         let expected = usage_style;
@@ -123,7 +123,7 @@ mod tests {
         let expected = Style::new()
             .bold()
             .fg(Color::DarkGray)
-            .paint(format!("[ACT/{}/0]", VERSION))
+            .paint(format!("[act/{}/0]", VERSION))
             .to_string();
         assert_eq!(actual, expected);
     }

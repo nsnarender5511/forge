@@ -1,5 +1,7 @@
 [workspace]
 members = ["crates/*"]
+default-members = ["crates/forge_main"]
+default-run = "forge"
 resolver = "2"
 
 [profile.release]

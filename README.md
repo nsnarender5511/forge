@@ -63,6 +63,55 @@ Forge is a comprehensive coding agent that integrates AI capabilities with your 
 - [Community](#community)
 - [Support Us](#support-us)
 
+# Forge CLI Agents
+
+This project implements various agents for the Forge CLI, providing functionality for documentation synchronization, content analysis, and more.
+
+## Configuration-Driven Agent Architecture
+
+The agents in Forge CLI are configured entirely through YAML files:
+
+- **Reduced Code Duplication**: No need to create a new Rust file for each agent
+- **Decoupled Behavior**: Agent behavior is defined through composable modules
+- **YAML Configuration**: New agents can be created entirely through YAML configuration
+- **Reusable Components**: Common behavior patterns can be shared across different agent roles
+
+### Creating a New Agent
+
+To create a new agent, simply define it in a YAML configuration file:
+
+```yaml
+agents:
+  - id: my-new-agent
+    role: CustomRole
+    model: anthropic/claude-3.5-sonnet
+    tool_supported: true
+    system_prompt: |
+      You are a specialized agent for...
+    behavior_modules:
+      - type_name: analyzer
+        params:
+          analysis_depth: deep
+      - type_name: coordinator
+        params:
+          map_event1: event2
+    tools:
+      - tool_forge_fs_read
+      - tool_forge_fs_search
+    subscribe:
+      - event1
+```
+
+Then load the agent using the `AgentFactory`:
+
+```rust
+let agents = AgentFactory::load_agents_from_yaml(
+    "path/to/config.yaml", 
+    state_manager, 
+    event_system
+)?;
+```
+
 ## Installation
 
 ### NPM

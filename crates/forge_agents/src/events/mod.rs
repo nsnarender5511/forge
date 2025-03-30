@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
+use std::fmt;
 use thiserror::Error;
 
 // Event constants for document syncing
@@ -65,8 +66,17 @@ impl Event {
 
 pub type EventHandler = Box<dyn Fn(Event) -> Result<(), EventError> + Send + Sync>;
 
+#[derive(Clone)]
 pub struct EventSystem {
     handlers: Arc<Mutex<HashMap<String, Vec<EventHandler>>>>,
+}
+
+impl fmt::Debug for EventSystem {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("EventSystem")
+            .field("handlers_count", &self.handlers.lock().unwrap().len())
+            .finish()
+    }
 }
 
 impl EventSystem {
@@ -110,13 +120,5 @@ impl EventSystem {
 impl Default for EventSystem {
     fn default() -> Self {
         Self::new()
-    }
-}
-
-impl Clone for EventSystem {
-    fn clone(&self) -> Self {
-        Self {
-            handlers: Arc::clone(&self.handlers),
-        }
     }
 } 

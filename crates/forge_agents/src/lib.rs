@@ -1,13 +1,12 @@
-pub mod agents;
+pub mod core;
 pub mod events;
 pub mod state;
 pub mod utils;
 
-// Re-export agents for convenience
-pub use agents::doc_content_syncer_agent::DocContentSyncerAgent;
-pub use agents::docusaurus_expert_agent::DocusaurusExpertAgent;
-pub use agents::ui_design_expert_agent::UiDesignExpertAgent;
-pub use agents::css_expert_agent::CssExpertAgent;
-pub use agents::doc_coordinator_agent::DocCoordinatorAgent;
-pub use agents::doc_runner_agent::DocRunnerAgent;
-pub use agents::doc_verifier_agent::DocVerifierAgent;
+// Re-export core components for convenience
+pub use core::agent::{Agent, AgentError};
+pub use core::behavior::{BehaviorModule, BehaviorModuleError};
+pub use core::config::{AgentConfig, BehaviorModuleConfig};
+pub use core::factory::AgentFactory;
+pub use core::prompt::PromptTemplateManager;
+pub use core::role::AgentRole;

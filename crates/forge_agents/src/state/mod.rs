@@ -1,10 +1,15 @@
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
+use std::fmt;
 
 pub mod doc_sync_state;
 
-pub struct StateManager {
-    state: Arc<Mutex<HashMap<String, serde_json::Value>>>,
+impl fmt::Debug for StateManager {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("StateManager")
+            .field("state_count", &self.state.lock().unwrap().len())
+            .finish()
+    }
 }
 
 impl StateManager {
@@ -37,10 +42,7 @@ impl Default for StateManager {
     }
 }
 
-impl Clone for StateManager {
-    fn clone(&self) -> Self {
-        Self {
-            state: Arc::clone(&self.state),
-        }
-    }
+#[derive(Clone)]
+pub struct StateManager {
+    state: Arc<Mutex<HashMap<String, serde_json::Value>>>,
 } 

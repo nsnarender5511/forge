@@ -1,0 +1,102 @@
+models:
+  # Role-based model definitions - easy to swap implementation
+  advanced_model: anthropic/claude-3.5-sonnet
+  standard_model: anthropic/claude-3.5-haiku
+
+variables:
+  mode: ACT
+
+agents:
+  # Document Coordinator Agent using the new architecture
+  - id: doc-coordinator
+    role: DocCoordinator
+    model: advanced_model
+    tool_supported: true
+    max_walker_depth: 1024
+    system_prompt: "{{> system-prompt-doc-coordinator.hbs }}"
+    behavior_modules:
+      - type_name: coordinator
+        params:
+          map_docs: docs-analyze-content
+          map_docs-content-analyzed: docs-analyze-docusaurus
+          map_docs-docusaurus-analyzed: docs-analyze-ui
+          map_docs-ui-analyzed: docs-analyze-css
+          map_docs-css-analyzed: docs-execute
+          map_docs-execution-complete: docs-verify
+          map_docs-verification-complete: docs-complete
+    tools:
+      - tool_forge_fs_read
+      - tool_forge_fs_list
+      - tool_forge_fs_search
+      - tool_forge_process_shell
+      - tool_forge_event_dispatch
+      - tool_forge_display_show_user
+    subscribe:
+      - docs
+      - docs-content-analyzed
+      - docs-docusaurus-analyzed
+      - docs-ui-analyzed
+      - docs-css-analyzed
+      - docs-execution-complete
+      - docs-verification-complete
+
+  # Doc Content Syncer Agent using the new architecture
+  - id: doc-content-syncer
+    role: DocContentSyncer
+    model: advanced_model
+    tool_supported: true
+    max_walker_depth: 1024
+    system_prompt: "{{> system-prompt-doc-content-syncer.hbs }}"
+    behavior_modules:
+      - type_name: analyzer
+        params:
+          analysis_depth: deep
+    tools:
+      - tool_forge_fs_read
+      - tool_forge_fs_list
+      - tool_forge_fs_search
+      - tool_forge_event_dispatch
+      - tool_forge_display_show_user
+    subscribe:
+      - docs-analyze-content
+
+  # Fix Planner Agent using the new architecture
+  - id: fix-planner
+    role: FixPlanner
+    model: advanced_model
+    tool_supported: true
+    system_prompt: "{{> system-prompt-fix-planner.hbs }}"
+    behavior_modules:
+      - type_name: analyzer
+        params:
+          analysis_depth: deep
+      - type_name: coordinator
+        params:
+          map_fix_issue: issue-diagnosed
+          map_issue-diagnosed: plan-created
+    tools:
+      - tool_forge_fs_read
+      - tool_forge_fs_search
+      - tool_forge_display_show_user
+    subscribe:
+      - fix_issue
+
+  # Implementer Agent using the new architecture
+  - id: implementer
+    role: Implementer
+    model: advanced_model
+    tool_supported: true
+    system_prompt: "{{> system-prompt-implementer.hbs }}"
+    behavior_modules:
+      - type_name: executor
+        params:
+          verification_level: high
+    tools:
+      - tool_forge_fs_read
+      - tool_forge_fs_create
+      - tool_forge_fs_patch
+      - tool_forge_process_shell
+      - tool_forge_fs_search
+      - tool_forge_display_show_user
+    subscribe:
+      - implement 

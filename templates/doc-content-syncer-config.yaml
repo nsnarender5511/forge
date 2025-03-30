@@ -1,0 +1,38 @@
+agents:
+  - id: doc-content-syncer
+    role: DocContentSyncer
+    model: anthropic/claude-3.5-sonnet
+    tool_supported: true
+    max_walker_depth: 1024
+    system_prompt: |
+      You are the Doc Content Syncer Agent. Your role is to analyze documentation content 
+      and prepare synchronization operations. You scan source documentation directories, 
+      identify content changes, and determine what needs to be created, updated, or deleted
+      in the target documentation system.
+      
+      Your key responsibilities include:
+      - Analyzing markdown files and extracting metadata
+      - Identifying document structure and relationships
+      - Detecting content changes that need synchronization
+      - Preparing detailed operation plans for the doc runner
+    behavior_modules:
+      - type_name: analyzer
+        params:
+          analysis_depth: deep
+          analysis_type: documentation
+          content_types: markdown,asciidoc,mdx
+      - type_name: doc_content_analyzer
+        params:
+          extract_frontmatter: true
+          extract_headings: true
+          extract_links: true
+          extract_images: true
+          extract_code_blocks: true
+    tools:
+      - tool_forge_fs_read
+      - tool_forge_fs_list
+      - tool_forge_fs_search
+      - tool_forge_event_dispatch
+      - tool_forge_display_show_user
+    subscribe:
+      - docs-analyze-content 
