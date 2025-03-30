@@ -185,5 +185,9 @@ agents:
       - tool_forge_filesystem_write
       - tool_forge_filesystem_list
       - tool_forge_process_shell
+      - tool_forge_fs_search     # For finding specific patterns in files
+      - tool_forge_fs_patch      # For applying targeted changes to files
+      - tool_forge_net_fetch     # For validating external links
+      - tool_forge_display_show_user  # For detailed user feedback on large operations
     subscribe:
       - docs                  # Triggered by the /docs command
