@@ -1,5 +1,7 @@
 [workspace]
 members = ["crates/*"]
+default-members = ["crates/forge_main"]
+default-run = "forge"
 resolver = "2"
 
 [profile.release]
@@ -48,7 +50,7 @@ quote = "1.0"
 reedline = "0.38.0"
 regex = "1.11.1"
 reqwest = { version = "0.12.12", features = ["json", "rustls-tls"], default-features = false }
-reqwest-eventsource = "0.6.0"
+reqwest-eventsource = { git = "https://github.com/jpopesculian/reqwest-eventsource", branch = "main" }
 rust-embed = "8.5.0"
 schemars = "0.8.21"
 serde = { version = "1.0.217", features = ["derive"] }
@@ -83,6 +85,7 @@ uuid = { version = "1.11.0", features = ["v4", "fast-rng", "macro-diagnostics", 
 whoami = "1.5.2"
 fnv_rs = "0.4.3"
 merge = {version = "0.1", features = ["derive"]}
+sha2 = "0.10.8"
 
 # Internal crates
 forge_api = { path = "crates/forge_api" }

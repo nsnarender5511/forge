@@ -58,6 +58,18 @@ pub struct UI<F> {
 }
 
 impl<F: API> UI<F> {
+    // Helper method to flush any buffered incomplete line
+    fn flush_line_buffer(&mut self, agent_id: &str) -> Result<()> {
+        if !self.state.line_buffer.is_empty() {
+            let agent_prefix = format!("[{}] ", agent_id.blue().bold());
+            CONSOLE.write(agent_prefix)?;
+            CONSOLE.write(self.state.line_buffer.dimmed().to_string())?;
+            CONSOLE.newline()?;
+            self.state.line_buffer.clear();
+        }
+        Ok(())
+    }
+
     // Set the current mode and update conversation variable
     async fn handle_mode_change(&mut self, mode: Mode) -> Result<()> {
         // Update the mode in state
@@ -167,6 +179,13 @@ impl<F: API> UI<F> {
                     input = self.console.prompt(prompt_input).await?;
                     continue;
                 }
+                Command::Docs(_) => {
+                    // This should never be reached since we're redirecting /docs to Custom command
+                    // But we need it for exhaustive pattern matching
+                    let prompt_input = Some((&self.state).into());
+                    input = self.console.prompt(prompt_input).await?;
+                    continue;
+                },
                 Command::Message(ref content) => {
                     let chat_result = match self.state.mode {
                         Mode::Help => {
@@ -295,6 +314,62 @@ impl<F: API> UI<F> {
         &mut self,
         stream: &mut (impl StreamExt<Item = Result<AgentMessage<ChatResponse>>> + Unpin),
     ) -> Result<()> {
+        // Check if this is a docs synchronization operation based on conversation state
+        // This is determined by examining the conversation's events to see if any have the "docs" name,
+        // which indicates this conversation is handling a document synchronization operation
+        let mut is_docs_sync = false;
+        let mut progress_tracking_error = false;
+        
+        if let Some(conversation_id) = &self.state.conversation_id {
+            // First, retrieve the current conversation using its ID
+            match self.api.conversation(conversation_id).await {
+                Ok(Some(conversation)) => {
+                    // Then check if any events in this conversation are "docs" events
+                    // If at least one "docs" event is found, this is a document sync operation
+                    is_docs_sync = conversation.events.iter().any(|e| e.name == "docs");
+                    self.state.progress_tracking_error_details = None; // Clear any previous error
+                },
+                Ok(None) => {
+                    // Conversation ID exists but conversation was not found
+                    // This is unexpected but we'll handle it gracefully
+                    tracing::warn!("Conversation with ID {} not found", conversation_id);
+                    progress_tracking_error = true;
+                    self.state.progress_tracking_error_details = Some("conversation not found".to_string());
+                    
+                    // Fallback mechanism - check current message context
+                    if let Some(last_event) = self.state.last_event.as_ref() {
+                        is_docs_sync = last_event.name == "docs";
+                    }
+                },
+                Err(err) => {
+                    let error_msg = format!("{}", err);
+                    tracing::error!("Error retrieving conversation {}: {}", conversation_id, err);
+                    progress_tracking_error = true;
+                    self.state.progress_tracking_error_details = Some(error_msg);
+                    
+                    // Fallback mechanism - check current message context
+                    if let Some(last_event) = self.state.last_event.as_ref() {
+                        is_docs_sync = last_event.name == "docs";
+                    }
+                }
+            }
+            
+            // Inform user if progress tracking might be affected
+            if progress_tracking_error && is_docs_sync {
+                let error_message = if let Some(error_details) = &self.state.progress_tracking_error_details {
+                    format!("Note: Progress tracking may be limited: {}", error_details)
+                } else {
+                    "Note: Progress tracking may be limited due to conversation retrieval issues.".to_string()
+                };
+                
+                CONSOLE.writeln(error_message.dimmed().to_string())?;
+            }
+        }
+            
+        // Progress tracking variables for docs sync operations
+        // These help provide feedback to the user during potentially long-running doc sync processes
+        let mut tool_call_count = 0;
+        
         loop {
             tokio::select! {
                 _ = tokio::signal::ctrl_c() => {
@@ -302,7 +377,26 @@ impl<F: API> UI<F> {
                 }
                 maybe_message = stream.next() => {
                     match maybe_message {
-                        Some(Ok(message)) => self.handle_chat_response(message)?,
+                        Some(Ok(message)) => {
+                            // For docs sync operations, provide additional feedback
+                            if is_docs_sync {
+                                match &message.message {
+                                    ChatResponse::ToolCallStart(_) => {
+                                        tool_call_count += 1;
+                                        if tool_call_count % 5 == 0 {
+                                            // Show occasional progress updates
+                                            CONSOLE.writeln(
+                                                format!("Still analyzing documentation... (processed {} operations)", 
+                                                tool_call_count).dimmed().to_string()
+                                            )?;
+                                        }
+                                    },
+                                    _ => {}
+                                }
+                            }
+                            
+                            self.handle_chat_response(message)?
+                        },
                         Some(Err(err)) => {
                             return Err(err);
                         }
@@ -349,33 +443,84 @@ impl<F: API> UI<F> {
     }
 
     fn handle_chat_response(&mut self, message: AgentMessage<ChatResponse>) -> Result<()> {
+        // Update the current agent ID in the state
+        self.state.current_agent = Some(message.agent.as_str().to_string());
+        
         match message.message {
-            ChatResponse::Text(text) => CONSOLE.write(text.dimmed().to_string())?,
+            ChatResponse::Text(text) => {
+                // Append new text to any existing buffered text
+                self.state.line_buffer.push_str(&text);
+                
+                // Split the buffer by newlines to identify complete lines
+                let lines: Vec<&str> = self.state.line_buffer.split('\n').collect();
+                
+                // The last line might be incomplete unless the buffer ends with a newline
+                let is_complete_line = self.state.line_buffer.ends_with('\n');
+                
+                // Process all lines except potentially the last one (which may be incomplete)
+                let lines_to_process = if is_complete_line { lines.len() } else { lines.len() - 1 };
+                
+                for i in 0..lines_to_process {
+                    let line = lines[i];
+                    if !line.is_empty() {
+                        // Show the agent name prefix only at the start of each complete line
+                        let agent_prefix = format!("[{}] ", message.agent.as_str().blue().bold());
+                        CONSOLE.write(agent_prefix)?;
+                        CONSOLE.write(line.dimmed().to_string())?;
+                    }
+                    // Always add a newline after a complete line
+                    CONSOLE.newline()?;
+                }
+                
+                // Clear the processed lines from the buffer
+                if is_complete_line {
+                    // If the last line is complete (ends with newline), clear the entire buffer
+                    self.state.line_buffer.clear();
+                } else if lines_to_process > 0 {
+                    // Otherwise keep the incomplete last line in the buffer
+                    self.state.line_buffer = lines[lines_to_process].to_string();
+                }
+            },
             ChatResponse::ToolCallStart(_) => {
+                // Ensure any buffered incomplete line is flushed before tool calls
+                self.flush_line_buffer(message.agent.as_str())?;
+                
                 CONSOLE.newline()?;
                 CONSOLE.newline()?;
             }
             ChatResponse::ToolCallEnd(tool_result) => {
+                // Ensure any buffered incomplete line is flushed before tool results
+                self.flush_line_buffer(message.agent.as_str())?;
+                
                 if !self.cli.verbose {
                     return Ok(());
                 }
 
                 let tool_name = tool_result.name.as_str();
+                
+                // Show which agent is executing the tool
+                let agent_prefix = format!("[{}] ", self.state.current_agent.as_ref().unwrap_or(&"unknown".to_string())).blue().bold();
 
                 CONSOLE.writeln(format!("{}", tool_result.content.dimmed()))?;
 
                 if tool_result.is_error {
-                    CONSOLE.writeln(TitleFormat::failed(tool_name).format())?;
+                    CONSOLE.writeln(format!("{}{}", agent_prefix, TitleFormat::failed(tool_name).format()))?;
                 } else {
-                    CONSOLE.writeln(TitleFormat::success(tool_name).format())?;
+                    CONSOLE.writeln(format!("{}{}", agent_prefix, TitleFormat::success(tool_name).format()))?;
                 }
             }
             ChatResponse::Event(event) => {
+                // Ensure any buffered incomplete line is flushed before events
+                self.flush_line_buffer(message.agent.as_str())?;
+                
                 if event.name == EVENT_TITLE {
                     self.state.current_title = Some(event.value.to_string());
                 }
             }
             ChatResponse::Usage(u) => {
+                // Ensure any buffered incomplete line is flushed before usage info
+                self.flush_line_buffer(message.agent.as_str())?;
+                
                 self.state.usage = u;
             }
         }
@@ -384,10 +529,12 @@ impl<F: API> UI<F> {
 
     async fn dispatch_event(&mut self, event: Event) -> Result<()> {
         let conversation_id = self.init_conversation().await?;
-        let chat = ChatRequest::new(event, conversation_id);
+        let chat = ChatRequest::new(event.clone(), conversation_id);
+        // Store the event for potential fallback usage
+        self.state.last_event = Some(event.clone());
         match self.api.chat(chat).await {
             Ok(mut stream) => self.handle_chat_stream(&mut stream).await,
-            Err(err) => Err(err),
+            Err(err) => Err(anyhow::anyhow!("Failed to dispatch event {}: {}", event.name, err)),
         }
     }
 }

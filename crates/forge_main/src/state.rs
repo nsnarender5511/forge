@@ -1,42 +1,58 @@
-use forge_api::{ConversationId, Usage};
+use std::fmt::Display;
+
+use forge_api::{ConversationId, Event, Usage};
 
 use crate::input::PromptInput;
 
-#[derive(Clone, Default)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub enum Mode {
+    Act,
     Plan,
     Help,
-    #[default]
-    Act,
 }
 
-impl std::fmt::Display for Mode {
+impl Display for Mode {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Mode::Plan => write!(f, "PLAN"),
-            Mode::Help => write!(f, "HELP"),
-            Mode::Act => write!(f, "ACT"),
+            Mode::Act => write!(f, "act"),
+            Mode::Plan => write!(f, "plan"),
+            Mode::Help => write!(f, "help"),
         }
     }
 }
 
+impl Default for Mode {
+    fn default() -> Self {
+        Self::Act
+    }
+}
+
 /// State information for the UI
+#[derive(Debug)]
 pub struct UIState {
-    pub current_title: Option<String>,
-    pub conversation_id: Option<ConversationId>,
-    pub usage: Usage,
     pub mode: Mode,
     pub is_first: bool,
+    pub current_title: Option<String>,
+    pub current_agent: Option<String>,
+    pub conversation_id: Option<ConversationId>,
+    pub usage: Usage,
+    pub last_event: Option<Event>,
+    pub progress_tracking_error_details: Option<String>,
+    pub line_buffer: String,
 }
 
 impl Default for UIState {
     fn default() -> Self {
         Self {
-            current_title: Default::default(),
-            conversation_id: Default::default(),
-            usage: Default::default(),
             mode: Default::default(),
             is_first: true,
+            current_title: None,
+            current_agent: None,
+            conversation_id: None,
+            usage: Default::default(),
+            last_event: None,
+            progress_tracking_error_details: None,
+            line_buffer: String::new(),
         }
     }
 }

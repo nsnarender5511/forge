@@ -67,6 +67,7 @@ impl ForgeCommandManager {
         Command::iter()
             .filter(|command| !matches!(command, Command::Message(_)))
             .filter(|command| !matches!(command, Command::Custom(_)))
+            .filter(|command| !matches!(command, Command::Docs(_)))
             .map(|command| ForgeCommand {
                 name: command.name().to_string(),
                 description: command.usage().to_string(),
@@ -167,6 +168,14 @@ impl ForgeCommandManager {
             "/act" => Ok(Command::Act),
             "/plan" => Ok(Command::Plan),
             "/help" => Ok(Command::Help),
+            text if text.starts_with("/docs") => {
+                // Extract any arguments after the command
+                let parts: Vec<&str> = text.splitn(2, ' ').collect();
+                let arg = parts.get(1).unwrap_or(&"").to_string();
+                
+                // Use the custom command handler instead of the built-in Docs variant
+                Ok(Command::Custom(PartialEvent::new("docs", arg)))
+            },
             text => {
                 let parts = text.split_ascii_whitespace().collect::<Vec<&str>>();
 
@@ -230,6 +239,9 @@ pub enum Command {
     /// Dumps the current conversation into a json file
     #[strum(props(usage = "Save conversation as JSON"))]
     Dump,
+    /// Trigger document sync between codebase docs and website
+    #[strum(props(usage = "Generate documentation from codebase"))]
+    Docs(Option<String>),
     /// Handles custom command defined in workflow file.
     Custom(PartialEvent),
 }
@@ -238,7 +250,7 @@ impl Command {
     pub fn name(&self) -> &str {
         match self {
             Command::New => "/new",
-            Command::Message(_) => "/message",
+            Command::Message(_) => "message",
             Command::Info => "/info",
             Command::Exit => "/exit",
             Command::Models => "/models",
@@ -246,13 +258,14 @@ impl Command {
             Command::Plan => "/plan",
             Command::Help => "/help",
             Command::Dump => "/dump",
+            Command::Docs(_) => "/docs",
             Command::Custom(event) => &event.name,
         }
     }
 
     /// Returns the usage description for the command.
     pub fn usage(&self) -> &str {
-        self.get_str("usage").unwrap()
+        self.get_str("usage").unwrap_or("No description available")
     }
 }
 

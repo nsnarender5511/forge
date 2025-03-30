@@ -3,6 +3,10 @@ commands:
     description: Analyzes and organizes code changes into meaningful, well-structured commits
   - name: pull-request
     description: Analyzes code changes, generates comprehensive PR descriptions with linked issues.
+  - name: docs
+    description: Automatically synchronize documentation from codebase to website
+    value: |
+      Automatically scan and synchronize documentation from the codebase's @docs folder to the website's supporting files.
 
 variables:
   mode: ACT
@@ -10,7 +14,7 @@ variables:
 # Define model anchors with simpler, purpose-based names
 models:
   # Role-based model definitions - easy to swap implementation
-  - &advanced_model anthropic/claude-3.7-sonnet
+  - &advanced_model anthropic/claude-3.5-sonnet
   - &standard_model anthropic/claude-3.5-haiku
 
 agents:
@@ -169,3 +173,176 @@ agents:
       - tool_forge_process_shell
     subscribe:
       - pull-request
+
+  # Document Syncer Agent: Automates synchronization between codebase docs and Docusaurus website
+  # Commented out in favor of the multi-agent documentation system
+  # - id: doc-syncer
+  #   tool_supported: true      # Enables access to file system operations
+  #   model: *advanced_model    # Uses the more capable model for complex documentation analysis
+  #   max_walker_depth: 1024    # Allows deeper directory traversal for finding all documentation files
+  #   system_prompt: "{{> system-prompt-doc-syncer.hbs }}"  # Template defining agent behavior
+  #   tools:
+  #     - tool_forge_filesystem_read
+  #     - tool_forge_filesystem_write
+  #     - tool_forge_filesystem_list
+  #     - tool_forge_process_shell
+  #     - tool_forge_fs_search     # For finding specific patterns in files
+  #     - tool_forge_fs_patch      # For applying targeted changes to files
+  #     - tool_forge_net_fetch     # For validating external links
+  #     - tool_forge_display_show_user  # For detailed user feedback on large operations
+  #   subscribe:
+  #     - docs                  # Triggered by the /docs command
+
+  # Documentation Synchronization Multi-Agent System
+  
+  # Doc Coordinator Agent: Orchestrates the entire documentation synchronization process
+  - id: doc-coordinator
+    tool_supported: true
+    model: *advanced_model
+    max_walker_depth: 1024
+    system_prompt: "{{> system-prompt-doc-coordinator.hbs }}"
+    tools:
+      - tool_forge_fs_read
+      - tool_forge_fs_list
+      - tool_forge_fs_search
+      - tool_forge_process_shell
+      - tool_forge_event_dispatch
+      - tool_forge_display_show_user
+    subscribe:
+      - docs
+      - docs-content-analyzed
+      - docs-docusaurus-analyzed
+      - docs-ui-analyzed
+      - docs-css-analyzed
+      - docs-execution-complete
+      - docs-verification-complete
+      - docs-implementation-complete
+      - docs-iteration-decision
+      - docs-iteration-complete
+
+  # Doc Content Syncer Agent: Analyzes documentation content and structure
+  - id: doc-content-syncer
+    tool_supported: true
+    model: *advanced_model
+    max_walker_depth: 1024
+    system_prompt: "{{> system-prompt-doc-content-syncer.hbs }}"
+    tools:
+      - tool_forge_fs_read
+      - tool_forge_fs_list
+      - tool_forge_fs_search
+      - tool_forge_event_dispatch
+      - tool_forge_display_show_user
+    subscribe:
+      - docs-analyze-content
+
+  # Docusaurus Expert Agent: Manages Docusaurus-specific configurations
+  - id: docusaurus-expert
+    tool_supported: true
+    model: *advanced_model
+    max_walker_depth: 1024
+    system_prompt: "{{> system-prompt-docusaurus-expert.hbs }}"
+    tools:
+      - tool_forge_fs_read
+      - tool_forge_fs_list
+      - tool_forge_fs_search
+      - tool_forge_event_dispatch
+      - tool_forge_display_show_user
+    subscribe:
+      - docs-analyze-docusaurus
+
+  # UI Design Expert Agent: Optimizes documentation UI elements
+  - id: ui-design-expert
+    tool_supported: true
+    model: *advanced_model
+    max_walker_depth: 1024
+    system_prompt: "{{> system-prompt-ui-design-expert.hbs }}"
+    tools:
+      - tool_forge_fs_read
+      - tool_forge_fs_list
+      - tool_forge_fs_search
+      - tool_forge_event_dispatch
+      - tool_forge_display_show_user
+    subscribe:
+      - docs-analyze-ui
+
+  # CSS Expert Agent: Enhances documentation styling
+  - id: css-expert
+    tool_supported: true
+    model: *advanced_model
+    max_walker_depth: 1024
+    system_prompt: "{{> system-prompt-css-expert.hbs }}"
+    tools:
+      - tool_forge_fs_read
+      - tool_forge_fs_list
+      - tool_forge_fs_search
+      - tool_forge_event_dispatch
+      - tool_forge_display_show_user
+    subscribe:
+      - docs-analyze-css
+
+  # Doc Runner Agent: Executes documentation synchronization operations
+  - id: doc-runner
+    tool_supported: true
+    model: *advanced_model
+    max_walker_depth: 1024
+    system_prompt: "{{> system-prompt-doc-runner.hbs }}"
+    tools:
+      - tool_forge_fs_read
+      - tool_forge_fs_create
+      - tool_forge_fs_patch
+      - tool_forge_fs_list
+      - tool_forge_fs_search
+      - tool_forge_process_shell
+      - tool_forge_event_dispatch
+      - tool_forge_display_show_user
+    subscribe:
+      - docs-execute
+
+  # Doc Verifier Agent: Validates documentation synchronization results
+  - id: doc-verifier
+    tool_supported: true
+    model: *advanced_model
+    max_walker_depth: 1024
+    system_prompt: "{{> system-prompt-doc-verifier.hbs }}"
+    tools:
+      - tool_forge_fs_read
+      - tool_forge_fs_list
+      - tool_forge_fs_search
+      - tool_forge_event_dispatch
+      - tool_forge_display_show_user
+    subscribe:
+      - docs-verify
+      
+  # Doc Change Planner Agent: Plans changes based on verification feedback
+  - id: doc-change-planner
+    tool_supported: true
+    model: *advanced_model
+    max_walker_depth: 1024
+    system_prompt: "{{> system-prompt-doc-change-planner.hbs }}"
+    tools:
+      - tool_forge_fs_read
+      - tool_forge_fs_list
+      - tool_forge_fs_search
+      - tool_forge_event_dispatch
+      - tool_forge_display_show_user
+    subscribe:
+      - docs-plan-changes
+      
+  # Change Implementer Agent: Implements planned changes in the feedback loop
+  - id: change-implementer
+    tool_supported: true
+    model: *advanced_model
+    max_walker_depth: 1024
+    system_prompt: "{{> system-prompt-change-implementer.hbs }}"
+    tools:
+      - tool_forge_fs_read
+      - tool_forge_fs_create
+      - tool_forge_fs_patch
+      - tool_forge_fs_remove
+      - tool_forge_fs_list
+      - tool_forge_fs_search
+      - tool_forge_process_shell
+      - tool_forge_event_dispatch
+      - tool_forge_display_show_user
+    subscribe:
+      - docs-implement-changes

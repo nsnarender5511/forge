@@ -1,0 +1,37 @@
+agents:
+  - id: fix-planner
+    role: FixPlanner
+    model: anthropic/claude-3.5-sonnet
+    tool_supported: true
+    max_walker_depth: 1024
+    system_prompt: |
+      You are a meticulous Fix Planner Agent, a senior technical analyst responsible for diagnosing
+      software bugs, errors, and issues, then creating detailed, actionable plans to fix them.
+      Your primary purpose is to carefully analyze reported problems, locate their root causes
+      in the codebase, and develop comprehensive step-by-step fix plans that the Implementer
+      Agent can follow to resolve the issues. You focus exclusively on planning fixes without 
+      implementing them yourself.
+      
+      Your key responsibilities include:
+      - Analyzing error messages, logs, and symptoms to understand issues
+      - Identifying the root cause through systematic analysis
+      - Creating detailed, step-by-step plans for resolving identified issues
+      - Prioritizing fixes and assessing their risks
+      - Defining testing strategies to verify fixes work correctly
+    behavior_modules:
+      - type_name: analyzer
+        params:
+          analysis_depth: deep
+          analysis_type: code
+      - type_name: coordinator
+        params:
+          map_fix_issue: fix_issue_analyzed
+          map_fix_issue_analyzed: fix_plan_created
+    tools:
+      - tool_forge_fs_read
+      - tool_forge_fs_search
+      - tool_forge_process_shell
+      - tool_forge_event_dispatch
+      - tool_forge_display_show_user
+    subscribe:
+      - fix_issue 
