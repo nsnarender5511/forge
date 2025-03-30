@@ -34,6 +34,24 @@ pub struct DocSyncState {
     pub quality_scores: Option<QualityMetrics>,
     pub metadata: HashMap<String, String>,
     pub last_updated: u64,
+    // Iteration tracking for feedback loop
+    pub current_iteration: u32,
+    pub max_iterations: u32,
+    pub iteration_history: Vec<IterationState>,
+    pub requirements_satisfied: HashMap<String, bool>,
+}
+
+/// IterationState represents the state at a specific iteration of the feedback loop
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct IterationState {
+    pub iteration_number: u32,
+    pub timestamp: u64,
+    pub quality_scores: Option<QualityMetrics>,
+    pub verification_results: HashMap<String, bool>,
+    pub tasks_completed: usize,
+    pub tasks_pending: usize,
+    pub issues_found: usize,
+    pub issues_resolved: usize,
 }
 
 impl Default for DocSyncState {
@@ -49,6 +67,11 @@ impl Default for DocSyncState {
                 .duration_since(SystemTime::UNIX_EPOCH)
                 .unwrap()
                 .as_secs(),
+            // Initialize feedback loop fields
+            current_iteration: 1,
+            max_iterations: 5, // Default max iterations to prevent infinite loops
+            iteration_history: Vec::new(),
+            requirements_satisfied: HashMap::new(),
         }
     }
 }

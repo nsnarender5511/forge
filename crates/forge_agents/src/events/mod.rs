@@ -19,6 +19,14 @@ pub const DOCS_VERIFY: &str = "docs-verify";
 pub const DOCS_VERIFICATION_COMPLETE: &str = "docs-verification-complete";
 pub const DOCS_COMPLETE: &str = "docs-complete";
 
+// New event constants for feedback loop
+pub const DOCS_PLAN_CHANGES: &str = "docs-plan-changes";
+pub const DOCS_CHANGES_PLANNED: &str = "docs-changes-planned";
+pub const DOCS_IMPLEMENT_CHANGES: &str = "docs-implement-changes";
+pub const DOCS_IMPLEMENTATION_COMPLETE: &str = "docs-implementation-complete";
+pub const DOCS_ITERATION_DECISION: &str = "docs-iteration-decision";
+pub const DOCS_ITERATION_COMPLETE: &str = "docs-iteration-complete";
+
 pub mod doc_sync_events;
 
 #[derive(Debug, Error)]

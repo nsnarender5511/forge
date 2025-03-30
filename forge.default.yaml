@@ -216,6 +216,9 @@ agents:
       - docs-css-analyzed
       - docs-execution-complete
       - docs-verification-complete
+      - docs-implementation-complete
+      - docs-iteration-decision
+      - docs-iteration-complete
 
   # Doc Content Syncer Agent: Analyzes documentation content and structure
   - id: doc-content-syncer
@@ -309,3 +312,37 @@ agents:
       - tool_forge_display_show_user
     subscribe:
       - docs-verify
+      
+  # Doc Change Planner Agent: Plans changes based on verification feedback
+  - id: doc-change-planner
+    tool_supported: true
+    model: *advanced_model
+    max_walker_depth: 1024
+    system_prompt: "{{> system-prompt-doc-change-planner.hbs }}"
+    tools:
+      - tool_forge_fs_read
+      - tool_forge_fs_list
+      - tool_forge_fs_search
+      - tool_forge_event_dispatch
+      - tool_forge_display_show_user
+    subscribe:
+      - docs-plan-changes
+      
+  # Change Implementer Agent: Implements planned changes in the feedback loop
+  - id: change-implementer
+    tool_supported: true
+    model: *advanced_model
+    max_walker_depth: 1024
+    system_prompt: "{{> system-prompt-change-implementer.hbs }}"
+    tools:
+      - tool_forge_fs_read
+      - tool_forge_fs_create
+      - tool_forge_fs_patch
+      - tool_forge_fs_remove
+      - tool_forge_fs_list
+      - tool_forge_fs_search
+      - tool_forge_process_shell
+      - tool_forge_event_dispatch
+      - tool_forge_display_show_user
+    subscribe:
+      - docs-implement-changes

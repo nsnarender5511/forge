@@ -59,6 +59,12 @@ pub enum DocSyncPayload {
     Verify(VerifyPayload),
     VerificationComplete(VerificationCompletePayload),
     Complete(CompletePayload),
+    PlanChanges(PlanChangesPayload),
+    ChangesPlanned(ChangesPlannedPayload),
+    ImplementChanges(ImplementChangesPayload),
+    ImplementationComplete(ImplementationCompletePayload),
+    IterationDecision(IterationDecisionPayload),
+    IterationComplete(IterationCompletePayload),
 }
 
 /// StartPayload contains parameters for initializing the synchronization process.
@@ -172,6 +178,94 @@ pub struct CompletePayload {
     pub doc_map: DocumentationMap,
     pub quality_scores: QualityMetrics,
     pub summary_report: SyncSummaryReport,
+}
+
+/// PlanChangesPayload contains parameters for planning changes based on verification results
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PlanChangesPayload {
+    pub doc_map: DocumentationMap,
+    pub verification_results: VerificationResults,
+    pub verification_report: VerificationReport,
+    pub iteration_number: u32,
+    pub requirements: HashMap<String, bool>,
+}
+
+/// ChangesPlannedPayload contains the results of change planning
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ChangesPlannedPayload {
+    pub doc_map: DocumentationMap,
+    pub planned_operations: Vec<SyncOperation>,
+    pub planning_report: PlanningReport,
+    pub iteration_number: u32,
+}
+
+/// ImplementChangesPayload contains parameters for implementing planned changes
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ImplementChangesPayload {
+    pub doc_map: DocumentationMap,
+    pub planned_operations: Vec<SyncOperation>,
+    pub execution_params: ExecutionParams,
+    pub iteration_number: u32,
+}
+
+/// ImplementationCompletePayload contains the results of change implementation
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ImplementationCompletePayload {
+    pub doc_map: DocumentationMap,
+    pub implementation_results: ImplementationResults,
+    pub implementation_log: Vec<ImplementationLogEntry>,
+    pub iteration_number: u32,
+}
+
+/// IterationDecisionPayload contains data for deciding whether to continue iterating
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct IterationDecisionPayload {
+    pub doc_map: DocumentationMap,
+    pub verification_results: VerificationResults,
+    pub iteration_number: u32,
+    pub requirements_satisfied: HashMap<String, bool>,
+    pub continue_iteration: bool,
+}
+
+/// IterationCompletePayload contains the results of a complete iteration
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct IterationCompletePayload {
+    pub doc_map: DocumentationMap,
+    pub final_verification_results: VerificationResults,
+    pub iteration_count: u32,
+    pub quality_scores: QualityMetrics,
+    pub summary_report: SyncSummaryReport,
+}
+
+/// PlanningReport contains information about the planning phase
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PlanningReport {
+    pub issues_addressed: Vec<String>,
+    pub planned_operations_count: usize,
+    pub improvement_focus_areas: Vec<String>,
+    pub estimated_impact: HashMap<String, f64>,
+    pub metadata: HashMap<String, String>,
+}
+
+/// ImplementationResults contains information about the implementation phase
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ImplementationResults {
+    pub successful_operations: usize,
+    pub failed_operations: usize,
+    pub skipped_operations: usize,
+    pub modified_files: Vec<String>,
+    pub metadata: HashMap<String, String>,
+}
+
+/// ImplementationLogEntry contains information about a specific implementation operation
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ImplementationLogEntry {
+    pub operation_type: String,
+    pub status: String, // "success", "failure", "skipped", etc.
+    pub target_path: String,
+    pub error_message: Option<String>,
+    pub metadata: HashMap<String, String>,
+    pub timestamp: u64,
 }
 
 // Supporting data structures
