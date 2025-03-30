@@ -1,0 +1,342 @@
+# Multi-Agent Documentation Synchronization System
+# Agent Configuration
+
+agents:
+  - name: doc-coordinator
+    description: Coordinates the entire documentation synchronization process, manages the master documentation map, and orchestrates all specialized agents.
+    template: templates/system-prompt-doc-coordinator.hbs
+    tools:
+      - codebase_search
+      - read_file
+      - list_dir
+      - grep_search
+      - run_terminal_cmd
+      - file_search
+    subscribes:
+      - docs
+      - docs-content-analyzed
+      - docs-docusaurus-analyzed
+      - docs-ui-analyzed
+      - docs-css-analyzed
+      - docs-execution-complete
+      - docs-verification-complete
+
+  - name: doc-content-syncer
+    description: Analyzes and synchronizes documentation content between source documentation and Docusaurus website.
+    template: templates/system-prompt-doc-content-syncer.hbs
+    tools:
+      - codebase_search
+      - read_file
+      - list_dir
+      - grep_search
+      - file_search
+    subscribes:
+      - docs-analyze-content
+
+  - name: docusaurus-expert
+    description: Manages Docusaurus-specific configurations, navigation structures, sidebars, and specialized components.
+    template: templates/system-prompt-docusaurus-expert.hbs
+    tools:
+      - codebase_search
+      - read_file
+      - list_dir
+      - grep_search
+      - file_search
+    subscribes:
+      - docs-analyze-docusaurus
+
+  - name: ui-design-expert
+    description: Optimizes documentation layouts, component usage, and overall user experience for Docusaurus websites.
+    template: templates/system-prompt-ui-design-expert.hbs
+    tools:
+      - codebase_search
+      - read_file
+      - list_dir
+      - grep_search
+      - file_search
+    subscribes:
+      - docs-analyze-ui
+
+  - name: css-expert
+    description: Enhances styling, ensures consistent theming, improves typography, and creates visually cohesive documentation experiences.
+    template: templates/system-prompt-css-expert.hbs
+    tools:
+      - codebase_search
+      - read_file
+      - list_dir
+      - grep_search
+      - file_search
+    subscribes:
+      - docs-analyze-css
+
+  - name: doc-runner
+    description: Executes synchronized file operations for updating a Docusaurus website based on source documentation.
+    template: templates/system-prompt-doc-runner.hbs
+    tools:
+      - codebase_search
+      - read_file
+      - list_dir
+      - grep_search
+      - edit_file
+      - run_terminal_cmd
+      - file_search
+    subscribes:
+      - docs-execute
+
+  - name: doc-verifier
+    description: Validates quality, accuracy, and completeness of documentation synchronization between source and website.
+    template: templates/system-prompt-doc-verifier.hbs
+    tools:
+      - codebase_search
+      - read_file
+      - list_dir
+      - grep_search
+      - file_search
+    subscribes:
+      - docs-verify
+
+# Event Definitions
+# These define the events that flow between agents in the system
+events:
+  - name: docs
+    description: Initial trigger from the user to start the documentation synchronization process.
+    source: user
+    target: doc-coordinator
+    payload:
+      - type: string
+        name: command
+        description: The command that triggered the documentation synchronization.
+      - type: object
+        name: parameters
+        description: Any parameters provided with the command.
+
+  - name: docs-analyze-content
+    description: Request for content analysis from the Coordinator to the Content Syncer.
+    source: doc-coordinator
+    target: doc-content-syncer
+    payload:
+      - type: object
+        name: documentation_map
+        description: The current documentation map for analysis.
+      - type: string
+        name: source_path
+        description: Path to source documentation.
+      - type: string
+        name: target_path
+        description: Path to target Docusaurus website.
+      - type: object
+        name: analysis_parameters
+        description: Specific parameters for content analysis.
+
+  - name: docs-content-analyzed
+    description: Response with content analysis results from Content Syncer to Coordinator.
+    source: doc-content-syncer
+    target: doc-coordinator
+    payload:
+      - type: object
+        name: content_analysis
+        description: Content analysis results.
+      - type: object
+        name: document_structure
+        description: Document structure findings.
+      - type: object
+        name: metadata_extraction
+        description: Metadata extraction results.
+      - type: array
+        name: proposed_operations
+        description: Proposed content transformation operations.
+      - type: object
+        name: updated_documentation_map
+        description: Updated documentation map with content analysis data.
+
+  - name: docs-analyze-docusaurus
+    description: Request for Docusaurus analysis from the Coordinator to the Docusaurus Expert.
+    source: doc-coordinator
+    target: docusaurus-expert
+    payload:
+      - type: object
+        name: documentation_map
+        description: The current documentation map with content analysis.
+      - type: string
+        name: docusaurus_path
+        description: Path to Docusaurus configuration.
+      - type: object
+        name: analysis_parameters
+        description: Specific parameters for Docusaurus analysis.
+
+  - name: docs-docusaurus-analyzed
+    description: Response with Docusaurus analysis results from Docusaurus Expert to Coordinator.
+    source: docusaurus-expert
+    target: doc-coordinator
+    payload:
+      - type: object
+        name: docusaurus_analysis
+        description: Docusaurus configuration analysis results.
+      - type: object
+        name: navigation_recommendations
+        description: Navigation and sidebar structure recommendations.
+      - type: object
+        name: component_recommendations
+        description: Component usage recommendations.
+      - type: array
+        name: proposed_operations
+        description: Proposed Docusaurus-specific operations.
+      - type: object
+        name: updated_documentation_map
+        description: Updated documentation map with Docusaurus data.
+
+  - name: docs-analyze-ui
+    description: Request for UI analysis from the Coordinator to the UI Design Expert.
+    source: doc-coordinator
+    target: ui-design-expert
+    payload:
+      - type: object
+        name: documentation_map
+        description: The current documentation map with content and Docusaurus data.
+      - type: object
+        name: ui_parameters
+        description: UI-specific parameters and requirements.
+      - type: array
+        name: component_references
+        description: References to existing UI components and layouts.
+
+  - name: docs-ui-analyzed
+    description: Response with UI analysis results from UI Design Expert to Coordinator.
+    source: ui-design-expert
+    target: doc-coordinator
+    payload:
+      - type: object
+        name: ui_analysis
+        description: UI analysis results.
+      - type: object
+        name: layout_recommendations
+        description: Layout optimization recommendations.
+      - type: object
+        name: component_recommendations
+        description: Component usage recommendations.
+      - type: object
+        name: accessibility_assessment
+        description: Accessibility assessment and improvements.
+      - type: object
+        name: updated_documentation_map
+        description: Updated documentation map with UI data.
+
+  - name: docs-analyze-css
+    description: Request for CSS analysis from the Coordinator to the CSS Expert.
+    source: doc-coordinator
+    target: css-expert
+    payload:
+      - type: object
+        name: documentation_map
+        description: The current documentation map with UI and Docusaurus data.
+      - type: object
+        name: css_parameters
+        description: CSS-specific parameters and requirements.
+      - type: array
+        name: style_references
+        description: References to existing CSS styles and themes.
+
+  - name: docs-css-analyzed
+    description: Response with CSS analysis results from CSS Expert to Coordinator.
+    source: css-expert
+    target: doc-coordinator
+    payload:
+      - type: object
+        name: css_analysis
+        description: CSS analysis results.
+      - type: object
+        name: style_recommendations
+        description: Style optimization recommendations.
+      - type: object
+        name: theme_recommendations
+        description: Theme enhancement suggestions.
+      - type: object
+        name: typography_recommendations
+        description: Typography and visual hierarchy improvements.
+      - type: object
+        name: updated_documentation_map
+        description: Updated documentation map with CSS data.
+
+  - name: docs-execute
+    description: Request for execution from the Coordinator to the Doc Runner.
+    source: doc-coordinator
+    target: doc-runner
+    payload:
+      - type: array
+        name: operations
+        description: List of file operations to execute.
+      - type: object
+        name: documentation_map
+        description: Current state of the documentation map.
+      - type: object
+        name: execution_parameters
+        description: Execution parameters.
+
+  - name: docs-execution-complete
+    description: Response with execution results from Doc Runner to Coordinator.
+    source: doc-runner
+    target: doc-coordinator
+    payload:
+      - type: object
+        name: execution_log
+        description: Detailed execution log.
+      - type: object
+        name: operation_status
+        description: Success/failure status for each operation.
+      - type: object
+        name: error_handling_actions
+        description: Actions taken to handle errors.
+      - type: object
+        name: updated_documentation_map
+        description: Updated documentation map with execution results.
+
+  - name: docs-verify
+    description: Request for verification from the Coordinator to the Doc Verifier.
+    source: doc-coordinator
+    target: doc-verifier
+    payload:
+      - type: object
+        name: documentation_map
+        description: Complete documentation map to verify.
+      - type: object
+        name: execution_logs
+        description: Execution logs from the Doc Runner.
+      - type: object
+        name: verification_parameters
+        description: Specific verification parameters.
+
+  - name: docs-verification-complete
+    description: Response with verification results from Doc Verifier to Coordinator.
+    source: doc-verifier
+    target: doc-coordinator
+    payload:
+      - type: object
+        name: verification_report
+        description: Detailed verification report.
+      - type: object
+        name: check_status
+        description: Success/failure status for each check.
+      - type: object
+        name: quality_scores
+        description: Quality scores across multiple dimensions.
+      - type: array
+        name: improvement_recommendations
+        description: Recommendations for further improvements.
+
+  - name: docs-complete
+    description: Final completion notification from Coordinator to user.
+    source: doc-coordinator
+    target: user
+    payload:
+      - type: object
+        name: synchronization_summary
+        description: Summary of the synchronization process.
+      - type: object
+        name: quality_report
+        description: Quality assessment report.
+      - type: array
+        name: recommendations
+        description: Recommendations for future improvements.
+      - type: object
+        name: documentation_map
+        description: Final state of the documentation map. 
